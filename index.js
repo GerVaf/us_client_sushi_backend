@@ -7,7 +7,7 @@ const errorHandler = require("./middleware/error_handler");
 const cors = require("cors"); // Import the cors package
 
 const app = express();
-const port = 8989 || process.env.PORT;
+const port = 8989;
 
 connectDB()
   .then(() => {
