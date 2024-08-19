@@ -19,11 +19,15 @@ exports.createPackage = tryCatch(async (req, res) => {
     );
   }
 
-  // Validate product IDs and check if they are already included in any package
-  const validProductIds = [];
-  const products = await Product.find({ _id: { $in: include } }).lean();
+  // Remove duplicate product IDs from the include array
+  const uniqueProductIds = [...new Set(include)];
 
-  if (products.length !== include.length) {
+  // Validate the unique product IDs
+  const products = await Product.find({
+    _id: { $in: uniqueProductIds },
+  }).lean();
+
+  if (products.length !== uniqueProductIds.length) {
     return sendResponse(
       res,
       400,
@@ -32,29 +36,14 @@ exports.createPackage = tryCatch(async (req, res) => {
     );
   }
 
-  for (const product of products) {
-    const packageWithProduct = await Package.findOne({
-      include: product._id,
-    }).lean();
-    if (packageWithProduct) {
-      return sendResponse(
-        res,
-        400,
-        null,
-        `Product with ID "${product._id}" is already included in another package.`
-      );
-    }
-    validProductIds.push(product._id);
-  }
-
-  // Create the new Package
-  const newPackage = new Package({ name, price, include: validProductIds });
+  // Create the new Package with unique products
+  const newPackage = new Package({ name, price, include: uniqueProductIds });
   await newPackage.save();
 
   // Populate the include field with product names
   await newPackage.populate({ path: "include", select: "name -_id" });
 
-  // Return the package with product names only
+  // Prepare the response
   const responsePackage = {
     name: newPackage.name,
     price: newPackage.price,
@@ -81,7 +70,10 @@ exports.getPackageById = tryCatch(async (req, res) => {
   const { id } = req.params;
 
   // Validate the package ID
-  if (!isValidObjectId(res, id)) return;
+  const validation = await isValidObjectId(id, Package);
+  if (!validation.valid) {
+    return sendResponse(res, 400, null, validation.message);
+  }
 
   const package = await Package.findById(id)
     .populate({
@@ -104,7 +96,10 @@ exports.updatePackage = tryCatch(async (req, res) => {
   const { name, price, include } = req.body;
 
   // Validate the package ID
-  if (!(await isValidObjectId(res, id, Package, "Package ID"))) return;
+  const validation = await isValidObjectId(id, Package);
+  if (!validation.valid) {
+    return sendResponse(res, 400, null, validation.message);
+  }
 
   // Validate product IDs (if provided)
   const validProductIds = [];
@@ -151,7 +146,10 @@ exports.deletePackage = tryCatch(async (req, res) => {
   const { id } = req.params;
 
   // Validate the package ID
-  if (!isValidObjectId(res, id)) return;
+  const validation = await isValidObjectId(id, Package);
+  if (!validation.valid) {
+    return sendResponse(res, 400, null, validation.message);
+  }
 
   const package = await Package.findByIdAndDelete(id).lean();
 

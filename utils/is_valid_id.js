@@ -1,19 +1,18 @@
 const mongoose = require("mongoose");
-const { sendResponse } = require("./response");
 
-exports.isValidObjectId = async (res, id, model, idName = "ID") => {
+exports.isValidObjectId = async (id, model) => {
   // Check if the ID format is valid
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    sendResponse(res, 400, null, `Invalid ${idName} format: ${id}`);
-    return false;
+    return { valid: false, message: `Invalid ID format: ${id}` };
   }
 
   // Check if the ID exists in the specified collection
-  const document = await model?.findById(id);
-  if (!document) {
-    sendResponse(res, 404, null, `${idName} not found: ${id}`);
-    return false;
+  if (model) {
+    const document = await model.findById(id);
+    if (!document) {
+      return { valid: false, message: `ID not found: ${id}` };
+    }
   }
 
-  return true;
+  return { valid: true };
 };
