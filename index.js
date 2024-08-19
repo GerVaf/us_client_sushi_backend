@@ -17,7 +17,7 @@ connectDB()
     app.use(
       cors({
         origin:
-          "https://us-client-sushi-frontend.vercel.app/" ||
+          "https://us-client-sushi-frontend.vercel.app" ||
           "http://localhost:3000",
       })
     );
