@@ -6,6 +6,8 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controller/product_controller");
+const { checkRole } = require("../middleware/role_check");
+const { verifyToken } = require("../middleware/vertify_token");
 
 const router = express.Router();
 
@@ -14,8 +16,8 @@ router.route("/").get(getProducts).post(createProduct);
 
 router
   .route("/:id")
-  .get(getProductById)
-  .put(updateProduct)
-  .delete(deleteProduct);
+  .get(verifyToken, checkRole("admin"), getProductById)
+  .put(verifyToken, checkRole("admin"), updateProduct)
+  .delete(verifyToken, checkRole("admin"), deleteProduct);
 
 module.exports = router;
