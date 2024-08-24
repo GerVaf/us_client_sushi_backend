@@ -77,9 +77,7 @@ exports.login = tryCatch(async (req, res) => {
 
   // Prepare the response
   const responseUser = {
-    username: user.username,
-    email: user.email,
-    role: user.role,
+    data: { username: user.username, email: user.email, role: user.role },
     token,
   };
 
