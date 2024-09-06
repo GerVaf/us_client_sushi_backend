@@ -20,6 +20,7 @@ connectDB()
 
     // Enable CORS for specific origins
     const allowedOrigins = [
+      "https://alex-product-erud.vercel.app/",
       "https://us-client-sushi-frontend.vercel.app",
       "http://localhost:5173",
       "http://localhost:5174",
