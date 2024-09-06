@@ -6,8 +6,8 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controller/product_controller");
-const { checkRole } = require("../middleware/role_check");
-const { verifyToken } = require("../middleware/vertify_token");
+const { verifyToken, checkRole } = require("../middleware/checking_middleware");
+
 
 const router = express.Router();
 

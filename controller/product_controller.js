@@ -25,10 +25,32 @@ exports.createProduct = tryCatch(async (req, res) => {
   return sendResponse(res, 201, product);
 });
 
-// Get all Products
+// Get all Products with Pagination
 exports.getProducts = tryCatch(async (req, res) => {
-  const products = await Product.find().lean();
-  return sendResponse(res, 200, products);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+
+  const startIndex = (page - 1) * limit;
+
+  const totalProducts = await Product.countDocuments();
+
+  const products = await Product.find()
+    .skip(startIndex)
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  const totalPages = Math.ceil(totalProducts / limit);
+
+  return sendResponse(res, 200, {
+    products,
+    table: {
+      currentPage: page,
+      totalPages,
+      pageLimit: limit,
+      totalProducts,
+    },
+  });
 });
 
 // Get a single Product by ID

@@ -53,16 +53,36 @@ exports.createPackage = tryCatch(async (req, res) => {
   return sendResponse(res, 201, responsePackage);
 });
 
-// Get all Packages
+// Get all Packages with Pagination
 exports.getPackages = tryCatch(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+
+  const startIndex = (page - 1) * limit;
+
+  const totalPackages = await Package.countDocuments();
+
   const packages = await Package.find()
     .populate({
       path: "include",
-      select: "name price description -_id",
+      select: "name price description",
     })
+    .skip(startIndex)
+    .sort({ createdAt: -1 })
+    .limit(limit)
     .lean();
 
-  return sendResponse(res, 200, packages);
+  const totalPages = Math.ceil(totalPackages / limit);
+
+  return sendResponse(res, 200, {
+    packages,
+    table: {
+      currentPage: page,
+      totalPages,
+      pageLimit: limit,
+      totalPackages,
+    },
+  });
 });
 
 // Get a single Package by ID

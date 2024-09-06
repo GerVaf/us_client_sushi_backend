@@ -18,6 +18,10 @@ const packageSchema = new Schema({
       required: true,
     },
   ],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 // Create the Package model using the schema

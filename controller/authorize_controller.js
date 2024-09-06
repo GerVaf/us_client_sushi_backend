@@ -42,7 +42,6 @@ exports.signup = tryCatch(async (req, res) => {
   const responseUser = {
     username: newUser.username,
     email: newUser.email,
-    role: newUser.role,
   };
 
   return sendResponse(res, 201, responseUser, "User created successfully!");

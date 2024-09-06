@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Order = require("../models/order");
 const { tryCatch } = require("../utils/try_catch");
 const { sendResponse } = require("../utils/response");
 const bcrypt = require("bcrypt");
@@ -45,9 +46,46 @@ exports.createUser = tryCatch(async (req, res) => {
 
 // Get all users (Admin only)
 exports.getUsers = tryCatch(async (req, res) => {
-  console.log(req)
-  const users = await User.find().select("-password").lean();
-  return sendResponse(res, 200, users);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+
+  const startIndex = (page - 1) * limit;
+
+  const totalUsers = await User.countDocuments({ _id: { $ne: req.userId } });
+
+  const users = await User.find({ _id: { $ne: req.userId } })
+    .select("-password")
+    .sort({ createdAt: -1 })
+    .skip(startIndex)
+    .limit(limit)
+    .lean();
+
+  // Fetch all orders for each user
+  const usersWithOrders = await Promise.all(
+    users.map(async (user) => {
+      const orders = await Order.find({ user: user._id })
+        .sort({ orderDate: -1 }) 
+        .select("items totalAmount progress orderDate") 
+        .lean();
+
+      return {
+        ...user,
+        orders: orders || [], // Include all orders or an empty array if no orders exist
+      };
+    })
+  );
+
+  const totalPages = Math.ceil(totalUsers / limit);
+
+  return sendResponse(res, 200, {
+    users: usersWithOrders,
+    table: {
+      currentPage: page,
+      totalPages,
+      pageLimit: limit,
+      totalUsers,
+    },
+  });
 });
 
 // Get a single user by ID (Admin only)
