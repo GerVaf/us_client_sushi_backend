@@ -1,20 +1,22 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-// Define the schema for the Package model
 const packageSchema = new Schema({
   name: {
     type: String,
-    required: true, // Name of the package (e.g., "Family Size")
+    required: true, 
   },
   price: {
-    type: Number,
-    required: true, // Total price for the package
+    type: String,
+    required: true, 
+  },
+  image: {
+    type: String,
   },
   include: [
     {
       type: Schema.Types.ObjectId,
-      ref: "Product", // Reference to the Product model
+      ref: "Product", 
       required: true,
     },
   ],
@@ -24,7 +26,6 @@ const packageSchema = new Schema({
   },
 });
 
-// Create the Package model using the schema
 const Package = mongoose.model("Package", packageSchema);
 
 module.exports = Package;

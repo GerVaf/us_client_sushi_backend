@@ -19,10 +19,8 @@ exports.createPackage = tryCatch(async (req, res) => {
     );
   }
 
-  // Remove duplicate product IDs from the include array
+  // Validate product IDs
   const uniqueProductIds = [...new Set(include)];
-
-  // Validate the unique product IDs
   const products = await Product.find({
     _id: { $in: uniqueProductIds },
   }).lean();
@@ -36,8 +34,17 @@ exports.createPackage = tryCatch(async (req, res) => {
     );
   }
 
-  // Create the new Package with unique products
-  const newPackage = new Package({ name, price, include: uniqueProductIds });
+  // Process uploaded files
+  const imageUrls =
+    req.files?.map((file) => `http://localhost:8989/${file.path}`) || [];
+
+  // Create and save the new Package
+  const newPackage = new Package({
+    name,
+    price,
+    include: uniqueProductIds,
+    image: imageUrls.join(","),
+  });
   await newPackage.save();
 
   // Populate the include field with product names
@@ -48,6 +55,7 @@ exports.createPackage = tryCatch(async (req, res) => {
     name: newPackage.name,
     price: newPackage.price,
     include: newPackage.include.map((item) => item.name),
+    image: imageUrls,
   };
 
   return sendResponse(res, 201, responsePackage);
@@ -65,7 +73,7 @@ exports.getPackages = tryCatch(async (req, res) => {
   const packages = await Package.find()
     .populate({
       path: "include",
-      select: "name price description",
+      select: "name price description image",
     })
     .skip(startIndex)
     .sort({ createdAt: -1 })
@@ -138,6 +146,12 @@ exports.updatePackage = tryCatch(async (req, res) => {
     validProductIds.push(...products.map((product) => product._id));
   }
 
+  // Process uploaded files
+  let imageUrls = [];
+  if (req.files && req.files.length > 0) {
+    imageUrls = req.files.map((file) => `http://localhost:8989/${file.path}`);
+  }
+
   // Update the package
   const updatedPackage = await Package.findByIdAndUpdate(
     id,
@@ -145,6 +159,7 @@ exports.updatePackage = tryCatch(async (req, res) => {
       name,
       price,
       include: validProductIds.length > 0 ? validProductIds : undefined,
+      image: imageUrls.length > 0 ? imageUrls.join(",") : undefined,
     },
     { new: true }
   )

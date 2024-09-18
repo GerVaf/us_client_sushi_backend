@@ -4,10 +4,16 @@ const { sendResponse } = require("../utils/response");
 const { isValidObjectId } = require("../utils/is_valid_id");
 const Package = require("../models/package");
 
-// Create a new Product
 exports.createProduct = tryCatch(async (req, res) => {
   const { name, price, description } = req.body;
+  
+  console.log(req.body);
 
+  if (!req.file) {
+    return sendResponse(res, 400, null, `Item image is required!`);
+  }
+
+  
   // Check if a product with the same name already exists
   const existingProduct = await Product.findOne({ name }).lean();
   if (existingProduct) {
@@ -20,12 +26,17 @@ exports.createProduct = tryCatch(async (req, res) => {
   }
 
   // If no product with the same name exists, create the new product
-  const product = new Product({ name, price, description });
+  const product = new Product({
+    name,
+    price,
+    description,
+    image: `http://localhost:8989/${req.file.path}`, 
+  });
   await product.save();
-  return sendResponse(res, 201, product);
+
+  return sendResponse(res, 201, product, "Product created successfully");
 });
 
-// Get all Products with Pagination
 exports.getProducts = tryCatch(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -53,7 +64,6 @@ exports.getProducts = tryCatch(async (req, res) => {
   });
 });
 
-// Get a single Product by ID
 exports.getProductById = tryCatch(async (req, res) => {
   const { id } = req.params;
 
@@ -77,23 +87,35 @@ exports.updateProduct = tryCatch(async (req, res) => {
   const { id } = req.params;
   const { name, price, description } = req.body;
 
-  // Use the reusable function to validate the ID
+  // Validate the object ID
   const validation = await isValidObjectId(id, Product);
   if (!validation.valid) {
     return sendResponse(res, 400, null, validation.message);
   }
 
-  const product = await Product.findByIdAndUpdate(
-    id,
-    { name, price, description },
-    { new: true, runValidators: true } // Return the updated document
-  ).lean();
+  // Prepare update data
+  const updateData = {
+    name,
+    price,
+    description,
+  };
+
+  // Check if a new image is uploaded
+  if (req.file) {
+    updateData.image = `http://localhost:8989/${req.file.path}`; // Update with the new image path
+  }
+
+  // Update the product
+  const product = await Product.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  }).lean();
 
   if (!product) {
     return sendResponse(res, 404, null, "Product not found");
   }
 
-  return sendResponse(res, 200, product);
+  return sendResponse(res, 200, product, "Product updated successfully");
 });
 
 exports.deleteProduct = tryCatch(async (req, res) => {

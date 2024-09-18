@@ -8,7 +8,10 @@ const dashboardRouter = require("./router/dashboard");
 const orderRouter = require("./router/order");
 const notFound = require("./middleware/not_found");
 const errorHandler = require("./middleware/error_handler");
-const cors = require("cors"); // Import the cors package
+const cors = require("cors");
+const path = require("path");
+
+const testing = require("./router/testing");
 
 const app = express();
 const port = 8989;
@@ -46,6 +49,10 @@ connectDB()
     app.use("/api/v1/users", userRouter);
     app.use("/api/v1/auth", authRouter);
 
+    app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+    // Use testing router
+    app.use("/api/v1/file", testing);
+    
     // Error handling middlewares
     app.use(notFound);
     app.use(errorHandler);
