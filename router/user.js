@@ -5,6 +5,8 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  generateOtp,
+  verifyOtp,
 } = require("../controller/user_controller");
 const { verifyToken, checkRole } = require("../middleware/checking_middleware");
 
@@ -22,5 +24,8 @@ router
   .get(verifyToken, checkRole("admin"), getUserById)
   .put(verifyToken, checkRole("admin"), updateUser)
   .delete(verifyToken, checkRole("admin"), deleteUser);
+
+router.route("/generate-otp").post(generateOtp);
+router.route("/verify-otp").post(verifyOtp);
 
 module.exports = router;

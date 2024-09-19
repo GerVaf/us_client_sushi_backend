@@ -30,7 +30,16 @@ exports.verifyToken = async (req, res, next) => {
 exports.checkRole = (requiredRole) => {
   return (req, res, next) => {
     // console.log("User in checkRole:", req.user);
-    if (!req.user || req.user.role !== requiredRole) {
+    if (!req.user) {
+      return sendResponse(
+        res,
+        403,
+        null,
+        "Access denied. User not authenticated."
+      );
+    }
+
+    if (req.user.role !== requiredRole) {
       return sendResponse(
         res,
         403,
@@ -38,6 +47,11 @@ exports.checkRole = (requiredRole) => {
         "Access denied. Insufficient permissions."
       );
     }
+
+    if (!req.user.isVerified) {
+      return sendResponse(res, 403, null, "Access denied. User not verified.");
+    }
+
     next();
   };
 };

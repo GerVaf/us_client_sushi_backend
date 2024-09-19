@@ -3,10 +3,13 @@ const Order = require("../models/order");
 const { tryCatch } = require("../utils/try_catch");
 const { sendResponse } = require("../utils/response");
 const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer");
 
 // Create a new user (Admin only)
 exports.createUser = tryCatch(async (req, res) => {
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, isVerified } = req.body;
+
+  console.log(isVerified);
 
   // Validate that all fields are provided
   if (!username || !email || !password || !role) {
@@ -28,6 +31,7 @@ exports.createUser = tryCatch(async (req, res) => {
     email,
     password: hashedPassword,
     role,
+    isVerified: isVerified ? isVerified : false,
   });
 
   // Save the user to the database
@@ -64,8 +68,8 @@ exports.getUsers = tryCatch(async (req, res) => {
   const usersWithOrders = await Promise.all(
     users.map(async (user) => {
       const orders = await Order.find({ user: user._id })
-        .sort({ orderDate: -1 }) 
-        .select("items totalAmount progress orderDate") 
+        .sort({ orderDate: -1 })
+        .select("items totalAmount progress orderDate")
         .lean();
 
       return {
@@ -140,4 +144,88 @@ exports.deleteUser = tryCatch(async (req, res) => {
   }
 
   return sendResponse(res, 204, null, "User deleted successfully!");
+});
+
+const GenerateOtp = () => {
+  const otp = Math.floor(1000 + Math.random() * 9000); // Generates a 4-digit OTP
+  return otp.toString();
+};
+
+// Nodemailer transporter for Gmail
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL,
+    pass: process.env.PASS,
+  },
+});
+
+exports.generateOtp = tryCatch(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return sendResponse(res, 404, null, "User not found");
+  }
+
+  const otpValue = GenerateOtp();
+  const salt = await bcrypt.genSalt(10);
+  const otpHash = await bcrypt.hash(otpValue, salt);
+
+  // Set OTP hash and expiration time (30 minutes from now)
+  user.otpHash = otpHash;
+  user.otpExpiresAt = new Date(Date.now() + 30 * 60 * 1000); // Current time + 30 minutes
+  await user.save();
+
+  // Email options
+  const mailOptions = {
+    from: {
+      name: "Sushi world",
+      address: "vixxgrego@gmail.com",
+    },
+    to: email,
+    subject: "Your OTP Code",
+    text: `Your OTP code is ${otpValue}. It is valid for 30 minutes.`,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    // console.log("Email sent: %s", info.messageId);
+    return sendResponse(
+      res,
+      201,
+      null,
+      "OTP code sent. Please check your email."
+    );
+  } catch (error) {
+    console.error("Email send error: ", error);
+    return sendResponse(res, 500, null, "Failed to send OTP email");
+  }
+});
+
+// Verify OTP with expiration check
+exports.verifyOtp = tryCatch(async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return sendResponse(res, 404, null, "User not found");
+  }
+
+  // Check if the OTP has expired
+  if (new Date() > user.otpExpiresAt) {
+    return sendResponse(res, 400, null, "OTP has expired");
+  }
+
+  const isMatch = await bcrypt.compare(otp, user.otpHash);
+  if (!isMatch) {
+    return sendResponse(res, 400, null, "Invalid OTP");
+  }
+
+  user.isVerified = true;
+  user.otpHash = null;
+  user.otpExpiresAt = null;
+  await user.save();
+
+  return sendResponse(res, 200, null, "OTP verified successfully");
 });
